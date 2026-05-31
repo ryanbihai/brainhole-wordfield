@@ -544,20 +544,58 @@ function renderGamePlayers(){
 // ── 终局报告 ──
 function showReport(){
   $('#gameReport').classList.remove('hidden');
-  const words=game.history.filter(h=>h.association).map(h=>`<li>🎯 <b>${h.nickname}</b> → ${h.word} | 🧠 ${h.association}</li>`).join('');
+  const h=game.history;
+  const hitWord=h.find(x=>x.hit)?.word||'?';
+  const winner=game.winner||'?';
+
+  let rows='';
+  h.forEach((x,i)=>{
+    const icon=x.hit?'🎯':(i===h.length-1?'':(i+1)+'.');
+    rows+=`<tr style="border-bottom:1px solid #334155;">
+      <td style="padding:4px 8px;">${icon}</td>
+      <td style="padding:4px 8px;color:#f59e0b;">${x.word}</td>
+      <td style="padding:4px 8px;color:#94a3b8;font-size:0.85em;">${x.hit?'—':('"'+x.association+'"')}</td>
+    </tr>`;
+  });
+
   $('#reportContent').innerHTML=`
     <p>🎯 目标词: <b style="color:#f59e0b;font-size:1.2em;">${game.targetWord}</b></p>
-    <p>📊 共 ${game.history.length} 个挑战词</p>
-    <p style="font-size:0.75em;color:#94a3b8;">AI 评分需主持人导出 JSON 给 Claude Code Agent</p>
-    <ul style="font-size:0.8em;margin-top:8px;">${words||'<li>暂无记录</li>'}</ul>
-    <button onclick="exportGameHistory()" class="sm ghost" style="margin-top:8px;">📋 导出游戏记录 (JSON)</button>
+    <p>🏆 命中者: <b>${winner}</b> · 共 ${h.length} 个挑战词</p>
+    <table style="width:100%;margin-top:10px;border-collapse:collapse;font-size:0.85em;">
+      <tr style="color:#64748b;font-size:0.75em;text-align:left;">
+        <th style="padding:4px 8px;">#</th><th>挑战词</th><th>主持人脑洞</th>
+      </tr>${rows}
+    </table>
+    <div style="margin-top:12px;display:flex;gap:8px;">
+      <button onclick="exportGameHistory()" class="sm ghost" style="flex:1;">📋 导出 JSON</button>
+      <button onclick="copyForAI()" class="sm amber" style="flex:1;">🤖 复制数据给 AI 评分</button>
+    </div>
   `;
 }
 function exportGameHistory(){
   const data={target_word:game.targetWord,history:game.history,players:game.players,ended_at:new Date().toISOString()};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='brainhole-game.json';a.click();
-  gameLog('📋 游戏记录已导出！可发送给主持人进行 AI 评分','sys');
+  gameLog('📋 游戏记录已导出！','sys');
+}
+function copyForAI(){
+  const h=game.history;
+  let prompt='请为这场脑洞词场游戏评分：\n\n';
+  prompt+=`🎯 目标词：${game.targetWord}\n`;
+  prompt+=`🏆 命中者：${game.winner||'?'}\n\n`;
+  prompt+='### 挑战记录\n\n';
+  h.forEach((x,i)=>{
+    prompt+=`${i+1}. 挑战词：「${x.word}」 → 主持人脑洞：「${x.association||'(无)'}」${x.hit?' 🎯命中':''}\n`;
+  });
+  prompt+='\n请给出：\n';
+  prompt+='1. 📊 靠拢度排行（语义距离 0-1，越小越近）\n';
+  prompt+='2. 🧠 脑洞值评分（1-10，标注违规0分项）\n';
+  prompt+='3. 🏅 最佳助推词和最佳脑洞\n';
+  navigator.clipboard.writeText(prompt).then(()=>{
+    gameLog('📋 评分提示词已复制到剪贴板！发送给 Claude Code Agent','sys');
+  }).catch(()=>{
+    gameLog('❌ 复制失败，请用导出 JSON 方式','sys');
+  });
 }
 function newGame(){
   game={role:null,hostOpenId:null,targetWord:null,players:{},round:0,history:[],ended:false};
