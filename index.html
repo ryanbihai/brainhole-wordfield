@@ -147,16 +147,67 @@ function log(text, type = 'sys') {
   logEl.scrollTop = logEl.scrollHeight;
 }
 
+// ── PoW: SHA-256 Hashcash (浏览器 Web Crypto API) ──
+async function sha256hex(input) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function bitsToHex(bits) { return Math.ceil(bits / 4); }
+const MAX_BIT_DIFFICULTY = 80;
+
+async function computeHashcash(challenge, difficulty = 20) {
+  if (difficulty > MAX_BIT_DIFFICULTY) throw new Error(`难度过高 (${difficulty})`);
+  const hexChars = bitsToHex(difficulty);
+  const prefix = '0'.repeat(hexChars);
+  let solution = 0;
+  const start = Date.now();
+  while (true) {
+    const hash = await sha256hex(challenge + solution);
+    if (hash.startsWith(prefix)) break;
+    solution++;
+    // 每 5000 次让出主线程，避免 UI 卡死
+    if (solution % 5000 === 0) await new Promise(r => setTimeout(r, 0));
+  }
+  const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+  return { solution: String(solution), hash: '', elapsed };
+}
+
 // ── 连接 ──
 async function connect() {
   const btn = $('#btnConnect');
   btn.disabled = true; btn.textContent = '连接中...';
 
   try {
-    // ① 注册临时身份
+    // ① 注册（可能需要 PoW）
     log('① POST /agents/register ...');
-    const regRes = await fetch(`${L0}/agents/register`, { method: 'POST' });
-    const regData = await regRes.json();
+    let regRes = await fetch(`${L0}/agents/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+    let regData = await regRes.json();
+
+    // PoW 挑战
+    if (regData.code === 401 && regData.data?.challenge) {
+      const { nonce, difficulty } = regData.data.challenge;
+      const d = difficulty || 20;
+      log(`⚡ PoW 挑战: difficulty=${d} bits，计算中...`);
+      btn.textContent = `PoW 计算中 (难度 ${d})...`;
+
+      const pow = await computeHashcash(nonce, d);
+      log(`✅ PoW 完成: ${pow.elapsed}s (尝试 ${pow.solution} 次)`);
+
+      regRes = await fetch(`${L0}/agents/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challenge: nonce, solution: pow.solution })
+      });
+      regData = await regRes.json();
+    }
+
     if (regData.code !== 0) throw new Error(regData.msg || '注册失败');
     state.agentId = regData.data.agent_id;
     state.apiKey = regData.data.api_key;
