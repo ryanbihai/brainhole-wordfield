@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>🦞 OceanBus 浏览器客户端 · 极简演示</title>
+<title>🦞 脑洞词场</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -12,17 +12,28 @@
     min-height: 100dvh; display: flex; justify-content: center;
     padding: 16px;
   }
-  .app { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 12px; }
+  .app { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 10px; }
 
-  .header { text-align: center; padding: 20px 0 8px; }
-  .header h1 { font-size: 1.4em; }
-  .header p { color: #64748b; font-size: 0.85em; margin-top: 4px; }
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; background: #1e293b; border-radius: 12px; padding: 4px; }
+  .tab {
+    flex:1; text-align:center; padding: 8px; border-radius:10px; cursor:pointer;
+    font-size: 0.85em; font-weight: 600; transition: all 0.15s; color: #64748b;
+    border: none; background: transparent;
+  }
+  .tab.active { background: #3b82f6; color: #fff; }
+
+  .header { text-align: center; padding: 8px 0; }
+  .header h1 { font-size: 1.3em; }
+  .header p { color: #64748b; font-size: 0.8em; margin-top: 2px; }
 
   .card {
-    background: #1e293b; border-radius: 12px; padding: 16px;
+    background: #1e293b; border-radius: 12px; padding: 14px;
     border: 1px solid #334155;
   }
-  .card-title { font-size: 0.8em; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .card-title { font-size: 0.75em; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
+  .card.accent { border-color: #f59e0b60; }
+  .card.success { border-color: #22c55e60; }
 
   .status-row { display: flex; align-items: center; gap: 8px; }
   .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
@@ -32,415 +43,585 @@
 
   .id-box {
     font-family: 'SF Mono', 'Fira Code', monospace;
-    font-size: 0.7em; color: #94a3b8; word-break: break-all;
+    font-size: 0.65em; color: #94a3b8; word-break: break-all;
     background: #0f172a; border-radius: 8px; padding: 10px;
-    max-height: 60px; overflow-y: auto; margin-top: 8px;
+    max-height: 50px; overflow-y: auto; margin-top: 6px;
   }
 
   button {
     background: #3b82f6; color: white; border: none;
-    border-radius: 8px; padding: 10px 20px; font-size: 0.95em;
+    border-radius: 8px; padding: 10px 16px; font-size: 0.9em;
     cursor: pointer; font-weight: 600; width: 100%;
     transition: background 0.15s;
   }
   button:hover { background: #2563eb; }
   button:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+  button.sm { width: auto; padding: 8px 14px; font-size: 0.8em; }
   button.danger { background: #ef4444; }
   button.danger:hover { background: #dc2626; }
+  button.amber { background: #f59e0b; color: #0f172a; }
+  button.amber:hover { background: #d97706; }
+  button.green { background: #22c55e; }
+  button.green:hover { background: #16a34a; }
+  button.ghost { background: #334155; font-size: 0.75em; }
 
   .input-row { display: flex; gap: 8px; }
-  input {
+  input, textarea {
     flex: 1; background: #0f172a; border: 1px solid #334155;
     border-radius: 8px; padding: 10px 14px; color: #e2e8f0;
-    font-size: 0.95em; outline: none;
+    font-size: 0.9em; outline: none; font-family: inherit;
   }
-  input:focus { border-color: #3b82f6; }
-  input::placeholder { color: #475569; }
+  textarea { resize: vertical; min-height: 60px; }
+  input:focus, textarea:focus { border-color: #3b82f6; }
+  input::placeholder, textarea::placeholder { color: #475569; }
 
   .log {
-    max-height: 300px; overflow-y: auto; display: flex;
-    flex-direction: column; gap: 6px;
+    max-height: 260px; overflow-y: auto; display: flex;
+    flex-direction: column; gap: 4px;
   }
   .log-entry {
-    padding: 8px 12px; border-radius: 8px; font-size: 0.85em;
+    padding: 6px 10px; border-radius: 8px; font-size: 0.82em;
     animation: slideIn 0.2s ease;
   }
-  @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
   .log-sent { background: #1e3a5f; align-self: flex-end; }
   .log-recv { background: #1e293b; border: 1px solid #334155; align-self: flex-start; }
-  .log-sys { background: transparent; color: #64748b; font-size: 0.78em; text-align: center; }
-  .log-time { font-size: 0.7em; color: #475569; margin-top: 2px; }
+  .log-sys { background: transparent; color: #64748b; font-size: 0.75em; text-align: center; }
+  .log-game { background: #1e2a1e; border: 1px solid #22c55e40; align-self: flex-start; }
+  .log-time { font-size: 0.65em; color: #475569; margin-top: 1px; }
 
-  .footer { text-align: center; color: #334155; font-size: 0.7em; padding: 20px 0; }
-  .footer a { color: #475569; }
+  .players { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+  .player-tag {
+    background: #0f172a; border: 1px solid #334155; border-radius: 20px;
+    padding: 4px 12px; font-size: 0.8em; display: flex; align-items: center; gap: 4px;
+  }
+  .player-tag .online { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
+
+  .big-word {
+    text-align: center; font-size: 1.8em; font-weight: 700; padding: 20px;
+    color: #f59e0b; letter-spacing: 0.1em;
+  }
+
+  .footer { text-align: center; color: #334155; font-size: 0.65em; padding: 16px 0; }
+
+  .hidden { display: none !important; }
+
+  /* 主持人目标词 - 强调保密 */
+  .secret-word {
+    background: #ef444420; border: 2px dashed #ef4444; border-radius: 12px;
+    padding: 14px; text-align: center;
+  }
+  .secret-word .label { color: #ef4444; font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.1em; }
+  .secret-word .word { font-size: 2em; font-weight: 700; color: #fbbf24; margin: 6px 0; }
 </style>
 </head>
 <body>
 <div class="app">
-  <div class="header">
-    <h1>🦞 OceanBus 浏览器客户端</h1>
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('game')">🦞 脑洞词场</button>
+    <button class="tab" onclick="switchTab('demo')">📡 Demo</button>
+  </div>
+
+  <div class="header" id="headerGame">
+    <h1>🦞 脑洞词场</h1>
+    <p>你说一个词，我告诉你答案之间的桥梁</p>
+  </div>
+  <div class="header hidden" id="headerDemo">
+    <h1>📡 OB 浏览器客户端 Demo</h1>
     <p>L0 API 直连 · 零服务器 · P2P 消息</p>
   </div>
 
-  <!-- 连接状态 -->
+  <!-- ====== 共享：连接状态 ====== -->
   <div class="card">
-    <div class="card-title">🔌 连接状态</div>
+    <div class="card-title">🔌 连接</div>
     <div class="status-row">
       <div class="dot off" id="dot"></div>
-      <span id="statusText" style="font-size:0.9em;">未连接</span>
+      <span id="statusText" style="font-size:0.85em;">未连接</span>
     </div>
     <button onclick="connect()" id="btnConnect">连接 OceanBus</button>
-    <button onclick="forgetIdentity()" id="btnClearId" style="display:none;background:#334155;margin-top:6px;font-size:0.8em;">清除身份 (重新注册)</button>
-    <div class="id-box" id="idBox" style="display:none;"></div>
+    <button onclick="forgetIdentity()" id="btnClearId" class="ghost hidden" style="margin-top:6px;">清除身份</button>
+    <div class="id-box hidden" id="idBox"></div>
   </div>
 
-  <!-- 发消息 -->
-  <div class="card">
-    <div class="card-title">📤 发送消息到</div>
-    <div class="input-row">
-      <input type="text" id="peerInput" placeholder="目标 OpenID (对方 .id 显示的地址)">
+  <!-- ====== 游戏模式 ====== -->
+  <div id="gamePanel">
+    <!-- 主持人：创建房间 -->
+    <div class="card hidden" id="hostSetup">
+      <div class="card-title">🎤 创建房间</div>
+      <div class="secret-word">
+        <div class="label">🔒 目标词（仅你可见，永不发送）</div>
+        <input type="text" id="targetWord" placeholder="输入目标词..." style="text-align:center;font-size:1.1em;">
+      </div>
+      <button onclick="createRoom()" id="btnCreate" class="amber" style="margin-top:8px;">创建房间</button>
     </div>
-    <div class="input-row" style="margin-top:8px;">
-      <input type="text" id="msgInput" placeholder="输入消息..." onkeydown="if(event.key==='Enter')send()">
-      <button onclick="send()" id="btnSend" disabled style="width:auto;white-space:nowrap;">发送</button>
+
+    <!-- 挑战者：加入房间 -->
+    <div class="card hidden" id="playerJoin">
+      <div class="card-title">🕵️ 加入房间</div>
+      <input type="text" id="hostOpenId" placeholder="粘贴主持人的 OpenID">
+      <input type="text" id="nickname" placeholder="你的昵称" style="margin-top:6px;">
+      <button onclick="joinRoom()" id="btnJoin" style="margin-top:8px;">加入房间</button>
+    </div>
+
+    <!-- 主持人：游戏进行中 -->
+    <div class="card accent hidden" id="hostGame">
+      <div class="card-title">🎤 主持中</div>
+      <div class="secret-word">
+        <div class="label">🔒 目标词</div>
+        <div class="word" id="hostTargetDisplay"></div>
+      </div>
+      <div class="players" id="hostPlayerList"></div>
+      <div class="card-title" style="margin-top:10px;">📥 收到的挑战词</div>
+      <div class="log" id="hostChallengeLog"></div>
+    </div>
+
+    <!-- 挑战者：游戏进行中 -->
+    <div class="card success hidden" id="playerGame">
+      <div class="card-title">🕵️ 挑战中</div>
+      <div class="players" id="gamePlayerList"></div>
+      <div style="margin-top:8px;">当前回合：<span id="currentTurn" style="color:#f59e0b;">等待中...</span></div>
+      <textarea id="challengeWord" placeholder="输入你的挑战词..." style="margin-top:6px;"></textarea>
+      <button onclick="submitChallenge()" id="btnChallenge" class="amber" style="margin-top:6px;">提交挑战词</button>
+      <div class="card-title" style="margin-top:10px;">🤔 猜一个</div>
+      <input type="text" id="guessWord" placeholder="猜猜目标词是什么？">
+      <button onclick="submitGuess()" id="btnGuess" class="green" style="margin-top:4px;">我猜！</button>
+    </div>
+
+    <!-- 共享：游戏日志 -->
+    <div class="card" id="gameLogCard">
+      <div class="card-title">📋 游戏动态 <span style="font-weight:400;color:#64748b;" id="pollStatus"></span></div>
+      <div class="log" id="gameLog"></div>
+    </div>
+
+    <!-- 终局报告 -->
+    <div class="card success hidden" id="gameReport">
+      <div class="card-title">🏆 游戏结束</div>
+      <div id="reportContent"></div>
+      <button onclick="newGame()" style="margin-top:10px;">再来一局</button>
     </div>
   </div>
 
-  <!-- 消息日志 -->
-  <div class="card">
-    <div class="card-title">📋 消息日志 <span style="font-weight:400;color:#64748b;" id="pollStatus"></span></div>
-    <div class="log" id="log">
-      <div class="log-entry log-sys">点击「连接 OceanBus」开始</div>
+  <!-- ====== Demo 模式 ====== -->
+  <div id="demoPanel" class="hidden">
+    <div class="card">
+      <div class="card-title">📤 发送消息到</div>
+      <div class="input-row">
+        <input type="text" id="peerInput" placeholder="目标 OpenID">
+      </div>
+      <div class="input-row" style="margin-top:6px;">
+        <input type="text" id="msgInput" placeholder="输入消息..." onkeydown="if(event.key==='Enter')sendDemo()">
+        <button onclick="sendDemo()" id="btnSend" disabled class="sm">发送</button>
+      </div>
     </div>
-    <button onclick="clearLog()" style="margin-top:8px;background:#334155;font-size:0.8em;">清空日志</button>
+    <div class="card">
+      <div class="card-title">📋 消息日志</div>
+      <div class="log" id="demoLog"><div class="log-entry log-sys">先连接 OceanBus</div></div>
+      <button onclick="clearDemoLog()" class="ghost" style="margin-top:6px;">清空</button>
+    </div>
+    <div class="card" style="border-color:#2563eb40;">
+      <div class="card-title">💡 验证</div>
+      <div style="font-size:0.78em;color:#94a3b8;">
+        ✅ 浏览器 fetch() L0 API  ✅ 纯 JS SHA-256 PoW  ✅ 零服务器 P2P
+      </div>
+    </div>
   </div>
 
-  <!-- 解释 -->
-  <div class="card" style="border-color:#2563eb40;background:#1e293bdd;">
-    <div class="card-title">💡 这证明了什么</div>
-    <div style="font-size:0.82em;color:#94a3b8;line-height:1.6;">
-      <p>✅ 浏览器直接调用 <code style="background:#0f172a;padding:1px 5px;border-radius:3px;">ai.ihaola.com.cn/api/l0</code></p>
-      <p>✅ 无需任何服务器中转 — OB L0 就是隧道</p>
-      <p>✅ 页面托管在 GitHub Pages，从浏览器直接注册 OB 身份</p>
-      <p>✅ 纯 <code style="background:#0f172a;padding:1px 5px;border-radius:3px;">fetch()</code> 调用，200 行 JS 搞定一切</p>
-      <p style="margin-top:8px;">👉 脑洞词场的 HTML 客户端就在这个基础上扩展</p>
-    </div>
-  </div>
-
-  <div class="footer">
-    OceanBus Browser Client · <span id="version"></span>
-  </div>
+  <div class="footer">OceanBus · <span id="version"></span></div>
 </div>
 
 <script>
-// ── OB L0 API ──
-// 只在 ai.ihaola.com.cn 本域时用相对路径（零 CORS）
-// 其他来源（GitHub Pages / 直连 IP / localhost）都用全 URL（L0 已开启 CORS）
+// ═══════════════════════════════════════════════
+// 共享：OB 核心
+// ═══════════════════════════════════════════════
 const L0 = (location.hostname === 'ai.ihaola.com.cn')
-  ? '/api/l0'                            // 同源 → 相对路径 (零 CORS，零延迟)
-  : 'https://ai.ihaola.com.cn/api/l0';   // 跨源 → 全 URL (CORS ok)
+  ? '/api/l0' : 'https://ai.ihaola.com.cn/api/l0';
 const STORAGE_KEY = 'ob_browser_identity';
-let state = { apiKey: null, openId: null, agentId: null, pollTimer: null, lastSeq: 0 };
+let state = { apiKey:null, openId:null, agentId:null, pollTimer:null, lastSeq:0 };
+// 游戏状态
+let game = { role:null, hostOpenId:null, targetWord:null, players:{}, round:0, history:[], ended:false };
 const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
 
-// ── 身份持久化 (localStorage) ──
-function saveIdentity() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({
-    agent_id: state.agentId,
-    api_key: state.apiKey,
-    openid: state.openId,
-  }));
-}
-function loadIdentity() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return false;
-    const cred = JSON.parse(raw);
-    if (cred.agent_id && cred.api_key && cred.openid) {
-      state.agentId = cred.agent_id;
-      state.apiKey = cred.api_key;
-      state.openId = cred.openid;
-      return true;
-    }
-  } catch {}
-  return false;
-}
-function clearIdentity() {
-  localStorage.removeItem(STORAGE_KEY);
-  state.agentId = null; state.apiKey = null; state.openId = null;
+// Tab 切换
+function switchTab(tab) {
+  $$('.tab').forEach(t => t.classList.toggle('active', t.textContent.includes(tab==='game'?'脑洞':'Demo')));
+  $('#gamePanel').classList.toggle('hidden', tab!=='game');
+  $('#demoPanel').classList.toggle('hidden', tab!=='demo');
+  $('#headerGame').classList.toggle('hidden', tab!=='game');
+  $('#headerDemo').classList.toggle('hidden', tab!=='demo');
 }
 
-// ── 日志 ──
-function log(text, type = 'sys') {
-  const el = document.createElement('div');
-  el.className = `log-entry log-${type}`;
-  el.innerHTML = text + `<div class="log-time">${new Date().toLocaleTimeString()}</div>`;
-  const logEl = $('#log');
-  logEl.appendChild(el);
-  logEl.scrollTop = logEl.scrollHeight;
-}
+// ── 身份持久化 ──
+function saveIdentity() { localStorage.setItem(STORAGE_KEY, JSON.stringify({agent_id:state.agentId,api_key:state.apiKey,openid:state.openId})); }
+function loadIdentity() { try { const r=localStorage.getItem(STORAGE_KEY); if(!r) return false; const c=JSON.parse(r); if(c.agent_id&&c.api_key&&c.openid){ state.agentId=c.agent_id;state.apiKey=c.api_key;state.openId=c.openid;return true; }} catch{} return false; }
+function clearIdentity() { localStorage.removeItem(STORAGE_KEY); state.agentId=null;state.apiKey=null;state.openId=null; }
 
-// ── PoW: SHA-256 Hashcash (纯 JS，兼容 HTTP 页面) ──
+// ── SHA-256 ──
 function sha256hex(input) {
-  function rotr(x, n) { return (x >>> n) | (x << (32 - n)); }
-  function ch(x, y, z) { return (x & y) ^ (~x & z); }
-  function maj(x, y, z) { return (x & y) ^ (x & z) ^ (y & z); }
-  function bsig0(x) { return rotr(x, 2) ^ rotr(x, 13) ^ rotr(x, 22); }
-  function bsig1(x) { return rotr(x, 6) ^ rotr(x, 11) ^ rotr(x, 25); }
-  function ssig0(x) { return rotr(x, 7) ^ rotr(x, 18) ^ (x >>> 3); }
-  function ssig1(x) { return rotr(x, 17) ^ rotr(x, 19) ^ (x >>> 10); }
-  const K = [
-    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
-    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
-    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
-    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
-    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
-    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
-    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
-    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
-  ];
-  const bytes = new TextEncoder().encode(input);
-  // SHA-256 padding: data + 0x80 + zeros + 8-byte big-endian bit length
-  // Total must be multiple of 64 bytes (512 bits)
-  const totalLen = Math.ceil((bytes.length + 9) / 64) * 64;
-  const padded = new Uint8Array(totalLen);
-  padded.set(bytes);
-  padded[bytes.length] = 0x80;
-  // Write 64-bit big-endian bit length to last 8 bytes
-  const bitLen = bytes.length * 8;
-  padded[totalLen - 1] = bitLen & 0xff;
-  padded[totalLen - 2] = (bitLen >>> 8) & 0xff;
-  padded[totalLen - 3] = (bitLen >>> 16) & 0xff;
-  padded[totalLen - 4] = (bitLen >>> 24) & 0xff;
-  // Upper 32 bits of 64-bit length (always 0 for our inputs, < 4GB)
-
-  let H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
-  for (let i = 0; i < padded.length; i += 64) {
-    const W = new Uint32Array(64);
-    for (let t = 0; t < 16; t++) {
-      const o = i + t * 4;
-      W[t] = (padded[o] << 24) | (padded[o+1] << 16) | (padded[o+2] << 8) | padded[o+3];
-    }
-    for (let t = 16; t < 64; t++) {
-      W[t] = (ssig1(W[t-2]) + W[t-7] + ssig0(W[t-15]) + W[t-16]) >>> 0;
-    }
-    let [a,b,c,d,e,f,g,h] = H;
-    for (let t = 0; t < 64; t++) {
-      const T1 = (h + bsig1(e) + ch(e,f,g) + K[t] + W[t]) >>> 0;
-      const T2 = (bsig0(a) + maj(a,b,c)) >>> 0;
-      h=g; g=f; f=e; e=(d+T1)>>>0; d=c; c=b; b=a; a=(T1+T2)>>>0;
-    }
-    H = H.map((x,i) => (x + [a,b,c,d,e,f,g,h][i]) >>> 0);
+  function rotr(x,n){return(x>>>n)|(x<<(32-n));}
+  function ch(x,y,z){return(x&y)^(~x&z);}
+  function maj(x,y,z){return(x&y)^(x&z)^(y&z);}
+  function bsig0(x){return rotr(x,2)^rotr(x,13)^rotr(x,22);}
+  function bsig1(x){return rotr(x,6)^rotr(x,11)^rotr(x,25);}
+  function ssig0(x){return rotr(x,7)^rotr(x,18)^(x>>>3);}
+  function ssig1(x){return rotr(x,17)^rotr(x,19)^(x>>>10);}
+  const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  const bytes=new TextEncoder().encode(input);
+  const totalLen=Math.ceil((bytes.length+9)/64)*64;
+  const padded=new Uint8Array(totalLen); padded.set(bytes); padded[bytes.length]=0x80;
+  const bitLen=bytes.length*8;
+  padded[totalLen-1]=bitLen&0xff; padded[totalLen-2]=(bitLen>>>8)&0xff; padded[totalLen-3]=(bitLen>>>16)&0xff; padded[totalLen-4]=(bitLen>>>24)&0xff;
+  let H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  for(let i=0;i<padded.length;i+=64){const W=new Uint32Array(64);
+    for(let t=0;t<16;t++){const o=i+t*4;W[t]=(padded[o]<<24)|(padded[o+1]<<16)|(padded[o+2]<<8)|padded[o+3];}
+    for(let t=16;t<64;t++){W[t]=(ssig1(W[t-2])+W[t-7]+ssig0(W[t-15])+W[t-16])>>>0;}
+    let[a,b,c,d,e,f,g,h]=H;
+    for(let t=0;t<64;t++){const T1=(h+bsig1(e)+ch(e,f,g)+K[t]+W[t])>>>0;const T2=(bsig0(a)+maj(a,b,c))>>>0;h=g;g=f;f=e;e=(d+T1)>>>0;d=c;c=b;b=a;a=(T1+T2)>>>0;}
+    H=H.map((x,i)=>(x+[a,b,c,d,e,f,g,h][i])>>>0);
   }
-  return H.map(x => x.toString(16).padStart(8,'0')).join('');
+  return H.map(x=>x.toString(16).padStart(8,'0')).join('');
+}
+const MAX_BIT_DIFFICULTY=80;
+function bitsToHex(b){return Math.ceil(b/4);}
+async function computeHashcash(challenge,difficulty=20){
+  if(difficulty>MAX_BIT_DIFFICULTY) throw new Error(`难度过高(${difficulty})`);
+  const hexChars=bitsToHex(difficulty),prefix='0'.repeat(hexChars); let solution=0; const start=Date.now();
+  while(true){const hash=sha256hex(challenge+solution); if(hash.startsWith(prefix)) break; solution++; if(solution%5000===0) await new Promise(r=>setTimeout(r,0));}
+  return {solution:String(solution),hash:'',elapsed:((Date.now()-start)/1000).toFixed(1)};
 }
 
-function bitsToHex(bits) { return Math.ceil(bits / 4); }
-const MAX_BIT_DIFFICULTY = 80;
-
-async function computeHashcash(challenge, difficulty = 20) {
-  if (difficulty > MAX_BIT_DIFFICULTY) throw new Error(`难度过高 (${difficulty})`);
-  const hexChars = bitsToHex(difficulty);
-  const prefix = '0'.repeat(hexChars);
-  let solution = 0;
-  const start = Date.now();
-  while (true) {
-    const hash = sha256hex(challenge + solution);
-    if (hash.startsWith(prefix)) break;
-    solution++;
-    // 每 5000 次让出主线程，避免 UI 卡死
-    if (solution % 5000 === 0) await new Promise(r => setTimeout(r, 0));
-  }
-  const elapsed = ((Date.now() - start) / 1000).toFixed(1);
-  return { solution: String(solution), hash: '', elapsed };
-}
-
-// ── 自动恢复身份 ──
-function restoreUI() {
-  $('#dot').className = 'dot on';
-  $('#statusText').textContent = '已连接 · 身份已恢复';
-  $('#idBox').style.display = 'block';
-  $('#idBox').innerHTML = `<span style="color:#22c55e;">●</span> OpenID:<br>${state.openId}`;
-  $('#btnConnect').textContent = '已连接';
-  $('#btnConnect').style.background = '#22c55e';
-  $('#btnConnect').disabled = true;
-  $('#btnSend').disabled = false;
-  $('#btnClearId').style.display = 'inline-block';
+// ── 连接 ──
+function restoreUI(){
+  $('#dot').className='dot on'; $('#statusText').textContent='已连接';
+  $('#idBox').classList.remove('hidden'); $('#idBox').innerHTML=`<span style="color:#22c55e;">●</span> OpenID:<br>${state.openId}`;
+  $('#btnConnect').textContent='已连接';$('#btnConnect').style.background='#22c55e';$('#btnConnect').disabled=true;
+  $('#btnClearId').classList.remove('hidden'); $('#btnSend').disabled=false;
   startPolling();
 }
-
-// ── 连接（首次注册或恢复已有身份） ──
-async function connect() {
-  const btn = $('#btnConnect');
-  btn.disabled = true; btn.textContent = '连接中...';
-
-  try {
-    // 先尝试从 localStorage 恢复
-    if (loadIdentity()) {
-      log('📦 从本地存储恢复了身份', 'sys');
-      log(`OpenID: <b>${state.openId.slice(0,24)}...</b>`, 'sys');
-      restoreUI();
-      return;
-    }
-
-    // ① 注册（可能需要 PoW）
-    log('① POST /agents/register ...');
-    let regRes = await fetch(`${L0}/agents/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: '{}'
-    });
-    let regData = await regRes.json();
-
-    // PoW 挑战
-    if (regData.code === 401 && regData.data?.challenge) {
-      const { nonce, difficulty } = regData.data.challenge;
-      const d = difficulty || 20;
-      log(`⚡ PoW 挑战: difficulty=${d} bits，计算中...`);
-      btn.textContent = `PoW 计算中 (难度 ${d})...`;
-
-      const pow = await computeHashcash(nonce, d);
-      log(`✅ PoW 完成: ${pow.elapsed}s (尝试 ${pow.solution} 次)`);
-
-      regRes = await fetch(`${L0}/agents/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ challenge: nonce, solution: pow.solution })
-      });
-      regData = await regRes.json();
-    }
-
-    if (regData.code !== 0) throw new Error(regData.msg || `注册失败 (code=${regData.code})`);
-    state.agentId = regData.data.agent_id;
-    state.apiKey = regData.data.api_key;
-    log(`✅ agent_id: <b>${state.agentId.slice(0,16)}...</b>`);
-
-    // ② 获取 OpenID
-    log('② GET /agents/me ...');
-    const meRes = await fetch(`${L0}/agents/me`, {
-      headers: { 'Authorization': `Bearer ${state.apiKey}` }
-    });
-    const meData = await meRes.json();
-    if (meData.code !== 0) throw new Error(meData.msg || '获取 OpenID 失败');
-    state.openId = meData.data.my_openid;
-    log(`✅ OpenID: <b>${state.openId.slice(0,24)}...</b>`);
-
-    // 持久化身份
-    saveIdentity();
-    log('💾 身份已保存到本地存储（刷新页面不会丢失）', 'sys');
-
-    // 更新 UI
-    restoreUI();
-
-  } catch (err) {
-    log(`❌ 连接失败: ${err.message}`, 'sys');
-    btn.disabled = false; btn.textContent = '重试连接';
-  }
+async function connect(){
+  const btn=$('#btnConnect'); btn.disabled=true;btn.textContent='连接中...';
+  try{
+    if(loadIdentity()){ gameLog('📦 从本地恢复了身份','sys'); restoreUI(); return; }
+    gameLog('① 注册 OB 身份...','sys');
+    let regRes=await fetch(`${L0}/agents/register`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    let regData=await regRes.json();
+    if(regData.code===401&&regData.data?.challenge){const{nonce,difficulty}=regData.data.challenge;const d=difficulty||20;gameLog(`⚡ PoW (难度${d})...`,'sys');btn.textContent=`PoW 计算中...`;const pow=await computeHashcash(nonce,d);gameLog(`✅ PoW 完成 (${pow.elapsed}s)`,'sys');regRes=await fetch(`${L0}/agents/register`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({challenge:nonce,solution:pow.solution})});regData=await regRes.json();}
+    if(regData.code!==0) throw new Error(regData.msg||`注册失败(code=${regData.code})`);
+    state.agentId=regData.data.agent_id;state.apiKey=regData.data.api_key;
+    const meRes=await fetch(`${L0}/agents/me`,{headers:{'Authorization':`Bearer ${state.apiKey}`}});
+    const meData=await meRes.json();
+    if(meData.code!==0) throw new Error(meData.msg||'获取 OpenID 失败');
+    state.openId=meData.data.my_openid; saveIdentity(); gameLog('💾 身份已保存','sys'); restoreUI();
+  }catch(err){gameLog(`❌ 连接失败: ${err.message}`,'sys');btn.disabled=false;btn.textContent='重试连接';}
 }
-
-// ── 清除身份（重新注册用） ──
-function forgetIdentity() {
-  if (!confirm('确定清除本地身份？下次打开页面需要重新注册。')) return;
-  stopPolling();
-  clearIdentity();
-  $('#dot').className = 'dot off';
-  $('#statusText').textContent = '未连接';
-  $('#idBox').style.display = 'none';
-  $('#btnConnect').textContent = '连接 OceanBus';
-  $('#btnConnect').style.background = '#3b82f6';
-  $('#btnConnect').disabled = false;
-  $('#btnSend').disabled = true;
-  $('#btnClearId').style.display = 'none';
-  log('🗑️ 身份已清除', 'sys');
-}
-
-// ── 停止轮询 ──
-function stopPolling() {
-  if (state.pollTimer) { clearInterval(state.pollTimer); state.pollTimer = null; }
-  $('#pollStatus').textContent = '(已停止)';
+function forgetIdentity(){
+  if(!confirm('确定清除本地身份？'))return; stopPolling();clearIdentity();
+  $('#dot').className='dot off';$('#statusText').textContent='未连接';$('#idBox').classList.add('hidden');
+  $('#btnConnect').textContent='连接 OceanBus';$('#btnConnect').style.background='#3b82f6';$('#btnConnect').disabled=false;
+  $('#btnSend').disabled=true;$('#btnClearId').classList.add('hidden');
 }
 
 // ── 轮询 ──
-function startPolling() {
+function stopPolling(){ if(state.pollTimer){clearInterval(state.pollTimer);state.pollTimer=null;} }
+function startPolling(){
   stopPolling();
-  state.pollTimer = setInterval(async () => {
-    try {
-      const res = await fetch(
-        `${L0}/messages/sync?to_openid=${state.openId}&since_seq=${state.lastSeq}&limit=10`,
-        { headers: { 'Authorization': `Bearer ${state.apiKey}` } }
-      );
-      const data = await res.json();
-      if (data.code !== 0) return;
-
-      const msgs = data.data?.messages || [];
-      for (const msg of msgs) {
-        state.lastSeq = Math.max(state.lastSeq, msg.seq_id);
-        let content = msg.content;
-        // 尝试各种解析：可能是 JSON 字符串，可能已经是对象
-        if (typeof content === 'string') {
-          try { const p = JSON.parse(content); if (typeof p === 'object') content = p; } catch {}
-        }
-        // 提取可读文本
-        if (typeof content === 'object' && content !== null) {
-          content = content.text || content.msg || content.message || JSON.stringify(content);
-        }
-        log(`📩 <b>${(msg.from_openid||'').slice(0,8)}...</b>: ${String(content).slice(0,200)}`, 'recv');
-      }
-      if (msgs.length > 0) $('#pollStatus').textContent = `(收到 ${msgs.length} 条)`;
-    } catch (e) {
-      // 静默重试
-    }
-  }, 3000);
-  $('#pollStatus').textContent = '(轮询中...)';
+  state.pollTimer=setInterval(async()=>{
+    try{
+      const res=await fetch(`${L0}/messages/sync?to_openid=${state.openId}&since_seq=${state.lastSeq}&limit=10`,{headers:{'Authorization':`Bearer ${state.apiKey}`}});
+      const data=await res.json(); if(data.code!==0) return;
+      const msgs=data.data?.messages||[];
+      for(const msg of msgs){state.lastSeq=Math.max(state.lastSeq,msg.seq_id); handleOBMessage(msg);}
+      if(msgs.length>0) $('#pollStatus').textContent=`(${msgs.length}条)`;
+    }catch(e){}
+  },3000);
+  $('#pollStatus').textContent='(轮询中...)';
 }
 
-// ── 发送 ──
-async function send() {
-  const peer = $('#peerInput').value.trim();
-  const text = $('#msgInput').value.trim();
-  if (!peer || !text) return;
+// ── 消息处理（中央分发） ──
+function handleOBMessage(msg){
+  let content=msg.content;
+  if(typeof content==='string'){ try{ const p=JSON.parse(content); if(typeof p==='object') content=p; }catch{} }
+  if(typeof content!=='object'||!content) return;
+  // 游戏消息路由
+  if(content.action&&game.role){
+    handleGameMessage(msg.from_openid, content);
+  }
+  // Demo 模式也显示
+  demoLog(`📩 <b>${(msg.from_openid||'').slice(0,8)}...</b>: ${JSON.stringify(content).slice(0,150)}`,'recv');
+}
 
-  const body = JSON.stringify({
-    from_openid: state.openId,
-    to_openid: peer,
-    client_msg_id: `web_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
-    content: JSON.stringify({ text, time: new Date().toISOString() })
-  });
+// ── 工具 ──
+function gameLog(text,type='sys'){ const el=document.createElement('div');el.className=`log-entry log-${type}`;el.innerHTML=text+`<div class="log-time">${new Date().toLocaleTimeString()}</div>`;$('#gameLog').appendChild(el);$('#gameLog').scrollTop=$('#gameLog').scrollHeight; }
+function demoLog(text,type='sys'){ const el=document.createElement('div');el.className=`log-entry log-${type}`;el.innerHTML=text+`<div class="log-time">${new Date().toLocaleTimeString()}</div>`;const l=$('#demoLog');l.appendChild(el);l.scrollTop=l.scrollHeight; }
+function clearDemoLog(){ $('#demoLog').innerHTML='<div class="log-entry log-sys">日志已清空</div>'; }
+async function sendOB(to,data){ const body=JSON.stringify({from_openid:state.openId,to_openid:to,client_msg_id:`gw_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,content:JSON.stringify(data)});const res=await fetch(`${L0}/messages`,{method:'POST',headers:{'Authorization':`Bearer ${state.apiKey}`,'Content-Type':'application/json'},body});const r=await res.json();if(r.code!==0) throw new Error(r.msg); }
+async function broadcastGame(data){ for(const pid of Object.keys(game.players)){ try{await sendOB(pid,data);}catch(e){}} }
 
-  try {
-    const res = await fetch(`${L0}/messages`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${state.apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body
-    });
-    const data = await res.json();
-    if (data.code !== 0) throw new Error(data.msg);
+// Demo 发送
+async function sendDemo(){
+  const peer=$('#peerInput').value.trim(),text=$('#msgInput').value.trim(); if(!peer||!text) return;
+  try{ await sendOB(peer,{text,time:new Date().toISOString()}); demoLog(`📤 <b>${text.slice(0,100)}</b>`,'sent');$('#msgInput').value=''; }
+  catch(err){ demoLog(`❌ 发送失败: ${err.message}`,'sys'); }
+}
 
-    log(`📤 <b>${text.slice(0,100)}</b>`, 'sent');
-    $('#msgInput').value = '';
-  } catch (err) {
-    log(`❌ 发送失败: ${err.message}`, 'sys');
+// ═══════════════════════════════════════════════
+// 游戏逻辑
+// ═══════════════════════════════════════════════
+
+// 主持人：创建房间
+function createRoom(){
+  const word=$('#targetWord').value.trim(); if(!word) return gameLog('请输入目标词！','sys');
+  game={role:'host',hostOpenId:null,targetWord:word,players:{},round:0,history:[],ended:false};
+  gameLog(`🎤 房间已创建！目标词已设定。`,'game');
+  gameLog(`📋 你的 OpenID（分享给挑战者）：`,'sys');
+  gameLog(`<b style="word-break:break-all;font-size:0.7em;">${state.openId}</b>`,'sys');
+  $('#hostSetup').classList.add('hidden');
+  $('#hostGame').classList.remove('hidden');
+  $('#hostTargetDisplay').textContent=word;
+  gameLog('⏳ 等待挑战者加入...','sys');
+  // 自动加入自己到玩家列表
+  game.players[state.openId]={nickname:'主持人(你)',joined:Date.now()};
+  renderHostPlayers();
+}
+
+// 挑战者：加入房间
+function joinRoom(){
+  const hostId=$('#hostOpenId').value.trim(),nick=$('#nickname').value.trim()||'匿名';
+  if(!hostId) return gameLog('请输入主持人的 OpenID！','sys');
+  game={role:'player',hostOpenId:hostId,targetWord:null,players:{},round:0,history:[],ended:false};
+  sendOB(hostId,{action:'join',nickname:nick}).then(()=>{
+    gameLog(`🕵️ 已向主持人发送加入请求（昵称：${nick}）`,'game');
+    $('#playerJoin').classList.add('hidden');
+    $('#playerGame').classList.remove('hidden');
+  }).catch(e=>gameLog(`❌ 加入失败: ${e.message}`,'sys'));
+}
+
+// 游戏消息处理
+function handleGameMessage(from,msg){
+  switch(msg.action){
+    // 主持人收到：挑战者加入
+    case 'join':
+      if(game.role==='host'&&!game.ended){
+        game.players[from]={nickname:msg.nickname||'匿名',joined:Date.now()};
+        gameLog(`👤 <b>${msg.nickname}</b> 加入了房间`,'game');
+        renderHostPlayers();
+        // 通知该挑战者加入成功
+        sendOB(from,{action:'joined',players:Object.fromEntries(Object.entries(game.players).map(([k,v])=>[k,v.nickname]))});
+        broadcastGame({action:'player_list',players:Object.fromEntries(Object.entries(game.players).map(([k,v])=>[k,v.nickname]))});
+      }
+      break;
+
+    // 挑战者收到：加入成功
+    case 'joined':
+      if(game.role==='player'){
+        game.players=msg.players||{};
+        gameLog('✅ 加入成功！','game');
+        renderGamePlayers();
+      }
+      break;
+
+    // 所有人收到：玩家列表更新
+    case 'player_list':
+      if(!game.ended){
+        game.players=msg.players||{};
+        if(game.role==='player') renderGamePlayers();
+        if(game.role==='host') renderHostPlayers();
+        gameLog(`👥 当前玩家: ${Object.values(game.players).join(', ')}`,'sys');
+      }
+      break;
+
+    // 主持人收到：挑战词
+    case 'challenge_word':
+      if(game.role==='host'&&!game.ended){
+        const pname=game.players[from]?.nickname||from.slice(0,8);
+        game.history.push({player:from,nickname:pname,word:msg.word,round:msg.round||++game.round,association:null});
+        gameLog(`🎯 <b>${pname}</b> 的挑战词: <b style="color:#f59e0b;">${msg.word}</b>`,'game');
+        // 广播挑战词给所有挑战者
+        broadcastGame({action:'new_challenge',player:from,nickname:pname,word:msg.word,round:game.round});
+        // 提醒主持人给关联
+        gameLog(`↩️ 请在此输入你对「${msg.word}」的脑洞关联，发送给挑战者`,'sys');
+        // 创建关联输入区
+        showHostAssocInput(from, msg.word, pname);
+      }
+      break;
+
+    // 挑战者收到：新的挑战词
+    case 'new_challenge':
+      if(game.role==='player'&&!game.ended){
+        gameLog(`🎯 <b>${msg.nickname}</b>: <b style="color:#f59e0b;">${msg.word}</b>`,'game');
+      }
+      break;
+
+    // 所有人收到：脑洞关联
+    case 'association':
+      if(!game.ended){
+        gameLog(`🧠 主持人对「<b>${msg.challenge_word}</b>」的脑洞: <i>"${msg.text}"</i>`,'game');
+        // 更新历史记录
+        const h=game.history.find(h=>h.word===msg.challenge_word&&!h.association);
+        if(h) h.association=msg.text;
+      }
+      break;
+
+    // 主持人收到：猜词
+    case 'guess':
+      if(game.role==='host'&&!game.ended){
+        const pname=game.players[from]?.nickname||from.slice(0,8);
+        const correct=msg.word===game.targetWord;
+        gameLog(correct?`🎉 <b>${pname}</b> 猜中了！目标词: <b style="color:#22c55e;">${msg.word}</b>`:`❌ <b>${pname}</b> 猜了「${msg.word}」—— 不对`,'game');
+        // 通知猜词者结果
+        sendOB(from,{action:'guess_result',correct,word:msg.word});
+        if(correct){
+          game.ended=true;
+          gameLog('🏆 游戏结束！请查看终局报告。','game');
+          broadcastGame({action:'game_over',winner:from,winner_name:pname,target_word:game.targetWord,history:game.history});
+        }else{
+          broadcastGame({action:'wrong_guess',player:from,nickname:pname,word:msg.word});
+        }
+      }
+      break;
+
+    // 挑战者收到：猜词结果
+    case 'guess_result':
+      if(game.role==='player'){
+        gameLog(msg.correct?`🎉 恭喜！你猜中了！`:`❌ 「${msg.word}」不对，继续加油...`,'game');
+        if(msg.correct){ game.ended=true; }
+      }
+      break;
+
+    // 所有人收到：猜错
+    case 'wrong_guess':
+      gameLog(`💭 <b>${msg.nickname}</b> 猜了「${msg.word}」—— 没中`,'sys');
+      break;
+
+    // 所有人收到：游戏结束
+    case 'game_over':
+      game.ended=true;
+      game.targetWord=msg.target_word;
+      game.history=msg.history||[];
+      gameLog(`🏆 <b>${msg.winner_name}</b> 猜中了目标词！`,'game');
+      gameLog(`🎯 目标词: <b style="color:#f59e0b;">${msg.target_word}</b>`,'game');
+      gameLog(`📊 共 ${game.history.length} 个挑战词，等待终局评分...`,'sys');
+      if(game.role==='player'){ $('#btnChallenge').disabled=true;$('#btnGuess').disabled=true; }
+      showReport();
+      break;
   }
 }
 
-function clearLog() {
-  $('#log').innerHTML = '<div class="log-entry log-sys">日志已清空</div>';
+// ── 主持人关联输入 ──
+function showHostAssocInput(playerId, word, pname){
+  const log=$('#hostChallengeLog');
+  const div=document.createElement('div');
+  div.style.cssText='background:#0f172a;border-radius:8px;padding:10px;margin:4px 0;';
+  div.innerHTML=`
+    <div style="font-size:0.8em;color:#94a3b8;">${pname} → <b style="color:#f59e0b;">${word}</b></div>
+    <div class="input-row" style="margin-top:6px;">
+      <input type="text" class="assoc-input" placeholder="输入脑洞关联...">
+      <button class="sm amber assoc-btn" style="width:auto;">发送</button>
+    </div>`;
+  log.appendChild(div);
+  log.scrollTop=log.scrollHeight;
+  const input=div.querySelector('.assoc-input'),btn=div.querySelector('.assoc-btn');
+  btn.onclick=async()=>{
+    const text=input.value.trim(); if(!text) return;
+    const h=game.history.find(h=>h.word===word&&!h.association);
+    if(h) h.association=text;
+    try{
+      await sendOB(playerId,{action:'association',challenge_word:word,text});
+      await broadcastGame({action:'association',challenge_word:word,text,player:playerId,nickname:pname});
+      gameLog(`🧠 已发送脑洞: <i>"${text}"</i>`,'game');
+      btn.disabled=true;input.disabled=true;
+      btn.textContent='已发送';btn.style.background='#22c55e';
+    }catch(e){gameLog(`❌ 发送失败: ${e.message}`,'sys');}
+  };
+  input.onkeydown=e=>{ if(e.key==='Enter') btn.click(); };
+}
+
+// ── 挑战者操作 ──
+async function submitChallenge(){
+  if(!game.hostOpenId||game.ended) return;
+  const word=$('#challengeWord').value.trim(); if(!word) return;
+  try{
+    await sendOB(game.hostOpenId,{action:'challenge_word',word,round:game.round+1});
+    gameLog(`🎯 你出了挑战词: <b style="color:#f59e0b;">${word}</b>`,'game');
+    $('#challengeWord').value='';
+  }catch(e){gameLog(`❌ 失败: ${e.message}`,'sys');}
+}
+async function submitGuess(){
+  if(!game.hostOpenId||game.ended) return;
+  const word=$('#guessWord').value.trim(); if(!word) return;
+  try{
+    await sendOB(game.hostOpenId,{action:'guess',word});
+    gameLog(`🤔 你猜: <b>${word}</b>`,'game');
+    $('#guessWord').value='';
+  }catch(e){gameLog(`❌ 失败: ${e.message}`,'sys');}
+}
+
+// ── 玩家列表渲染 ──
+function renderHostPlayers(){
+  const el=$('#hostPlayerList'); el.innerHTML='';
+  for(const[id,p]of Object.entries(game.players)){
+    if(id===state.openId) continue; // 跳过自己
+    el.innerHTML+=`<span class="player-tag"><span class="online"></span>${p.nickname||id.slice(0,8)}</span>`;
+  }
+  if(el.innerHTML==='') el.innerHTML='<span style="color:#64748b;font-size:0.8em;">等待挑战者...</span>';
+}
+function renderGamePlayers(){
+  const el=$('#gamePlayerList'); el.innerHTML='';
+  for(const[id,name]of Object.entries(game.players)){
+    el.innerHTML+=`<span class="player-tag"><span class="online"></span>${name||id.slice(0,8)}</span>`;
+  }
+}
+
+// ── 终局报告 ──
+function showReport(){
+  $('#gameReport').classList.remove('hidden');
+  const words=game.history.filter(h=>h.association).map(h=>`<li>🎯 <b>${h.nickname}</b> → ${h.word} | 🧠 ${h.association}</li>`).join('');
+  $('#reportContent').innerHTML=`
+    <p>🎯 目标词: <b style="color:#f59e0b;font-size:1.2em;">${game.targetWord}</b></p>
+    <p>📊 共 ${game.history.length} 个挑战词</p>
+    <p style="font-size:0.75em;color:#94a3b8;">AI 评分需主持人导出 JSON 给 Claude Code Agent</p>
+    <ul style="font-size:0.8em;margin-top:8px;">${words||'<li>暂无记录</li>'}</ul>
+    <button onclick="exportGameHistory()" class="sm ghost" style="margin-top:8px;">📋 导出游戏记录 (JSON)</button>
+  `;
+}
+function exportGameHistory(){
+  const data={target_word:game.targetWord,history:game.history,players:game.players,ended_at:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='brainhole-game.json';a.click();
+  gameLog('📋 游戏记录已导出！可发送给主持人进行 AI 评分','sys');
+}
+function newGame(){
+  game={role:null,hostOpenId:null,targetWord:null,players:{},round:0,history:[],ended:false};
+  $('#hostSetup,#playerJoin,#hostGame,#playerGame,#gameReport').forEach(s=>$(s)?.classList.add('hidden'));
+  $('#gameLog').innerHTML='';
+  gameLog('🦞 准备开始新一局...','sys');
+  // 让用户选择角色
+  $('#hostSetup').classList.remove('hidden');
+  $('#playerJoin').classList.remove('hidden');
+}
+
+// ── 角色选择（未选择时显示两个入口） ──
+function showRoleSelection(){
+  // 如果已连接且有身份，显示创建/加入入口
+  if(state.openId){
+    $('#hostSetup').classList.remove('hidden');
+    $('#playerJoin').classList.remove('hidden');
+    // 预填主持人的 OpenID 输入框为空
+  }
 }
 
 // ── 初始化 ──
-$('#version').textContent = `v0.1 · ${new Date().toISOString().slice(0,10)}`;
+$('#version').textContent = `v0.2 · ${new Date().toISOString().slice(0,10)}`;
 
-// 自动恢复身份
-if (loadIdentity()) {
-  log('🦞 OceanBus 浏览器客户端', 'sys');
-  log('📦 自动恢复了身份，开始轮询...', 'sys');
+if(loadIdentity()){
+  gameLog('🦞 欢迎回来！身份已自动恢复','sys');
   restoreUI();
+  showRoleSelection();
 } else {
-  log('🦞 OceanBus 浏览器客户端已就绪', 'sys');
-  log('点击上方按钮连接 OceanBus L0', 'sys');
+  gameLog('🦞 脑洞词场已就绪','sys');
+  gameLog('点击「连接 OceanBus」开始','sys');
+  showRoleSelection();
 }
 </script>
 </body>
