@@ -133,7 +133,10 @@
 
 <script>
 // ── OB L0 API ──
-const L0 = 'https://ai.ihaola.com.cn/api/l0';
+// 同源检测：ai.ihaola.com.cn 或 localhost 直接用相对路径（零 CORS）
+const L0 = (location.hostname === 'ryanbihai.github.io')
+  ? 'https://ai.ihaola.com.cn/api/l0'   // GitHub Pages → 全 URL (CORS ok)
+  : '/api/l0';                           // 同源 → 相对路径 (零 CORS)
 let state = { apiKey: null, openId: null, agentId: null, pollTimer: null, lastSeq: 0 };
 const $ = s => document.querySelector(s);
 
