@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🦞 OceanBus 浏览器客户端 · 极简演示</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #0f172a; color: #e2e8f0;
+    min-height: 100dvh; display: flex; justify-content: center;
+    padding: 16px;
+  }
+  .app { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 12px; }
+
+  .header { text-align: center; padding: 20px 0 8px; }
+  .header h1 { font-size: 1.4em; }
+  .header p { color: #64748b; font-size: 0.85em; margin-top: 4px; }
+
+  .card {
+    background: #1e293b; border-radius: 12px; padding: 16px;
+    border: 1px solid #334155;
+  }
+  .card-title { font-size: 0.8em; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+  .status-row { display: flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .dot.off { background: #475569; }
+  .dot.on { background: #22c55e; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .id-box {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.7em; color: #94a3b8; word-break: break-all;
+    background: #0f172a; border-radius: 8px; padding: 10px;
+    max-height: 60px; overflow-y: auto; margin-top: 8px;
+  }
+
+  button {
+    background: #3b82f6; color: white; border: none;
+    border-radius: 8px; padding: 10px 20px; font-size: 0.95em;
+    cursor: pointer; font-weight: 600; width: 100%;
+    transition: background 0.15s;
+  }
+  button:hover { background: #2563eb; }
+  button:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+  button.danger { background: #ef4444; }
+  button.danger:hover { background: #dc2626; }
+
+  .input-row { display: flex; gap: 8px; }
+  input {
+    flex: 1; background: #0f172a; border: 1px solid #334155;
+    border-radius: 8px; padding: 10px 14px; color: #e2e8f0;
+    font-size: 0.95em; outline: none;
+  }
+  input:focus { border-color: #3b82f6; }
+  input::placeholder { color: #475569; }
+
+  .log {
+    max-height: 300px; overflow-y: auto; display: flex;
+    flex-direction: column; gap: 6px;
+  }
+  .log-entry {
+    padding: 8px 12px; border-radius: 8px; font-size: 0.85em;
+    animation: slideIn 0.2s ease;
+  }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .log-sent { background: #1e3a5f; align-self: flex-end; }
+  .log-recv { background: #1e293b; border: 1px solid #334155; align-self: flex-start; }
+  .log-sys { background: transparent; color: #64748b; font-size: 0.78em; text-align: center; }
+  .log-time { font-size: 0.7em; color: #475569; margin-top: 2px; }
+
+  .footer { text-align: center; color: #334155; font-size: 0.7em; padding: 20px 0; }
+  .footer a { color: #475569; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>🦞 OceanBus 浏览器客户端</h1>
+    <p>L0 API 直连 · 零服务器 · P2P 消息</p>
+  </div>
+
+  <!-- 连接状态 -->
+  <div class="card">
+    <div class="card-title">🔌 连接状态</div>
+    <div class="status-row">
+      <div class="dot off" id="dot"></div>
+      <span id="statusText" style="font-size:0.9em;">未连接</span>
+    </div>
+    <button onclick="connect()" id="btnConnect">连接 OceanBus</button>
+    <div class="id-box" id="idBox" style="display:none;"></div>
+  </div>
+
+  <!-- 发消息 -->
+  <div class="card">
+    <div class="card-title">📤 发送消息到</div>
+    <div class="input-row">
+      <input type="text" id="peerInput" placeholder="目标 OpenID (对方 .id 显示的地址)">
+    </div>
+    <div class="input-row" style="margin-top:8px;">
+      <input type="text" id="msgInput" placeholder="输入消息..." onkeydown="if(event.key==='Enter')send()">
+      <button onclick="send()" id="btnSend" disabled style="width:auto;white-space:nowrap;">发送</button>
+    </div>
+  </div>
+
+  <!-- 消息日志 -->
+  <div class="card">
+    <div class="card-title">📋 消息日志 <span style="font-weight:400;color:#64748b;" id="pollStatus"></span></div>
+    <div class="log" id="log">
+      <div class="log-entry log-sys">点击「连接 OceanBus」开始</div>
+    </div>
+    <button onclick="clearLog()" style="margin-top:8px;background:#334155;font-size:0.8em;">清空日志</button>
+  </div>
+
+  <!-- 解释 -->
+  <div class="card" style="border-color:#2563eb40;background:#1e293bdd;">
+    <div class="card-title">💡 这证明了什么</div>
+    <div style="font-size:0.82em;color:#94a3b8;line-height:1.6;">
+      <p>✅ 浏览器直接调用 <code style="background:#0f172a;padding:1px 5px;border-radius:3px;">ai.ihaola.com.cn/api/l0</code></p>
+      <p>✅ 无需任何服务器中转 — OB L0 就是隧道</p>
+      <p>✅ 页面托管在 GitHub Pages，从浏览器直接注册 OB 身份</p>
+      <p>✅ 纯 <code style="background:#0f172a;padding:1px 5px;border-radius:3px;">fetch()</code> 调用，200 行 JS 搞定一切</p>
+      <p style="margin-top:8px;">👉 脑洞词场的 HTML 客户端就在这个基础上扩展</p>
+    </div>
+  </div>
+
+  <div class="footer">
+    OceanBus Browser Client · <span id="version"></span>
+  </div>
+</div>
+
+<script>
+// ── OB L0 API ──
+const L0 = 'https://ai.ihaola.com.cn/api/l0';
+let state = { apiKey: null, openId: null, agentId: null, pollTimer: null, lastSeq: 0 };
+const $ = s => document.querySelector(s);
+
+// ── 日志 ──
+function log(text, type = 'sys') {
+  const el = document.createElement('div');
+  el.className = `log-entry log-${type}`;
+  el.innerHTML = text + `<div class="log-time">${new Date().toLocaleTimeString()}</div>`;
+  const logEl = $('#log');
+  logEl.appendChild(el);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+// ── 连接 ──
+async function connect() {
+  const btn = $('#btnConnect');
+  btn.disabled = true; btn.textContent = '连接中...';
+
+  try {
+    // ① 注册临时身份
+    log('① POST /agents/register ...');
+    const regRes = await fetch(`${L0}/agents/register`, { method: 'POST' });
+    const regData = await regRes.json();
+    if (regData.code !== 0) throw new Error(regData.msg || '注册失败');
+    state.agentId = regData.data.agent_id;
+    state.apiKey = regData.data.api_key;
+    log(`✅ agent_id: <b>${state.agentId.slice(0,16)}...</b>`);
+
+    // ② 获取 OpenID
+    log('② GET /agents/me ...');
+    const meRes = await fetch(`${L0}/agents/me`, {
+      headers: { 'Authorization': `Bearer ${state.apiKey}` }
+    });
+    const meData = await meRes.json();
+    if (meData.code !== 0) throw new Error(meData.msg || '获取 OpenID 失败');
+    state.openId = meData.data.my_openid;
+    log(`✅ OpenID: <b>${state.openId.slice(0,24)}...</b>`);
+
+    // 更新 UI
+    $('#dot').className = 'dot on';
+    $('#statusText').textContent = '已连接 · 身份就绪';
+    $('#idBox').style.display = 'block';
+    $('#idBox').innerHTML = `<span style="color:#22c55e;">●</span> OpenID:<br>${state.openId}`;
+    btn.textContent = '已连接'; btn.style.background = '#22c55e';
+    $('#btnSend').disabled = false;
+
+    // ③ 开始轮询
+    startPolling();
+    log('③ 开始轮询消息 (每 3 秒) ...', 'sys');
+
+  } catch (err) {
+    log(`❌ 连接失败: ${err.message}`, 'sys');
+    btn.disabled = false; btn.textContent = '重试连接';
+  }
+}
+
+// ── 轮询 ──
+function startPolling() {
+  if (state.pollTimer) clearInterval(state.pollTimer);
+  state.pollTimer = setInterval(async () => {
+    try {
+      const res = await fetch(
+        `${L0}/messages/sync?to_openid=${state.openId}&since_seq=${state.lastSeq}&limit=10`,
+        { headers: { 'Authorization': `Bearer ${state.apiKey}` } }
+      );
+      const data = await res.json();
+      if (data.code !== 0) return;
+
+      const msgs = data.data?.messages || [];
+      for (const msg of msgs) {
+        state.lastSeq = Math.max(state.lastSeq, msg.seq_id);
+        let content = msg.content;
+        try { content = JSON.parse(content); } catch {}
+        if (typeof content === 'object' && content.text) content = content.text;
+        log(`📩 <b>${msg.from_openid.slice(0,8)}...</b>: ${String(content).slice(0,200)}`, 'recv');
+      }
+      if (msgs.length > 0) $('#pollStatus').textContent = `(收到 ${msgs.length} 条)`;
+    } catch (e) {
+      // 静默重试
+    }
+  }, 3000);
+  $('#pollStatus').textContent = '(轮询中...)';
+}
+
+// ── 发送 ──
+async function send() {
+  const peer = $('#peerInput').value.trim();
+  const text = $('#msgInput').value.trim();
+  if (!peer || !text) return;
+
+  const body = JSON.stringify({
+    from_openid: state.openId,
+    to_openid: peer,
+    client_msg_id: `web_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
+    content: JSON.stringify({ text, time: new Date().toISOString() })
+  });
+
+  try {
+    const res = await fetch(`${L0}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${state.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body
+    });
+    const data = await res.json();
+    if (data.code !== 0) throw new Error(data.msg);
+
+    log(`📤 <b>${text.slice(0,100)}</b>`, 'sent');
+    $('#msgInput').value = '';
+  } catch (err) {
+    log(`❌ 发送失败: ${err.message}`, 'sys');
+  }
+}
+
+function clearLog() {
+  $('#log').innerHTML = '<div class="log-entry log-sys">日志已清空</div>';
+}
+
+// ── 初始化 ──
+$('#version').textContent = `v0.1 · ${new Date().toISOString().slice(0,10)}`;
+log('🦞 OceanBus 浏览器客户端已就绪', 'sys');
+log('点击上方按钮连接 OceanBus L0', 'sys');
+</script>
+</body>
+</html>
