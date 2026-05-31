@@ -342,14 +342,13 @@ function startPolling(){
 function handleOBMessage(msg){
   let content=msg.content;
   if(typeof content==='string'){ try{ const p=JSON.parse(content); if(typeof p==='object') content=p; }catch{} }
-  if(typeof content!=='object'||!content) return;
+  if(typeof content!=='object'||!content) return; // 密文或非JSON，跳过
+  if(!content.action) return; // 无action字段，跳过
   const fromShort=(msg.from_openid||'').slice(0,8);
-  // 所有消息都记到游戏日志（调试用）
-  if(content.action){
-    gameLog(`📨 [${content.action}] from ${fromShort}... role=${game.role} ${JSON.stringify(content).slice(0,100)}`,'sys');
-  }
+  // 所有游戏消息都记到游戏日志
+  gameLog(`📨 [${content.action}] from ${fromShort}...`,'sys');
   // 游戏消息路由
-  if(content.action&&game.role){
+  if(game.role){
     handleGameMessage(msg.from_openid, content);
   }
   // Demo 模式也显示
