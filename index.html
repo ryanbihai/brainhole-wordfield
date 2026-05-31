@@ -343,12 +343,17 @@ function handleOBMessage(msg){
   let content=msg.content;
   if(typeof content==='string'){ try{ const p=JSON.parse(content); if(typeof p==='object') content=p; }catch{} }
   if(typeof content!=='object'||!content) return;
+  const fromShort=(msg.from_openid||'').slice(0,8);
+  // 所有消息都记到游戏日志（调试用）
+  if(content.action){
+    gameLog(`📨 [${content.action}] from ${fromShort}... role=${game.role} ${JSON.stringify(content).slice(0,100)}`,'sys');
+  }
   // 游戏消息路由
   if(content.action&&game.role){
     handleGameMessage(msg.from_openid, content);
   }
   // Demo 模式也显示
-  demoLog(`📩 <b>${(msg.from_openid||'').slice(0,8)}...</b>: ${JSON.stringify(content).slice(0,150)}`,'recv');
+  demoLog(`📩 <b>${fromShort}...</b>: ${JSON.stringify(content).slice(0,150)}`,'recv');
 }
 
 // ── 工具 ──
