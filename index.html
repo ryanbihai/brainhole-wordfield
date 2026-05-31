@@ -320,17 +320,21 @@ function forgetIdentity(){
 
 // ── 轮询 ──
 function stopPolling(){ if(state.pollTimer){clearInterval(state.pollTimer);state.pollTimer=null;} }
+async function pollOnce(){
+  try{
+    const res=await fetch(`${L0}/messages/sync?to_openid=${state.openId}&since_seq=${state.lastSeq}&limit=10`,{headers:{'Authorization':`Bearer ${state.apiKey}`}});
+    const data=await res.json();
+    if(data.code!==0){ console.warn('poll error:',data); return; }
+    const msgs=data.data?.messages||[];
+    if(msgs.length>0) console.log(`poll: got ${msgs.length} msgs, lastSeq=${state.lastSeq}`);
+    for(const msg of msgs){state.lastSeq=Math.max(state.lastSeq,msg.seq_id); handleOBMessage(msg);}
+    if(msgs.length>0) $('#pollStatus').textContent=`(${msgs.length}条)`;
+  }catch(e){ console.warn('poll exception:',e.message); }
+}
 function startPolling(){
   stopPolling();
-  state.pollTimer=setInterval(async()=>{
-    try{
-      const res=await fetch(`${L0}/messages/sync?to_openid=${state.openId}&since_seq=${state.lastSeq}&limit=10`,{headers:{'Authorization':`Bearer ${state.apiKey}`}});
-      const data=await res.json(); if(data.code!==0) return;
-      const msgs=data.data?.messages||[];
-      for(const msg of msgs){state.lastSeq=Math.max(state.lastSeq,msg.seq_id); handleOBMessage(msg);}
-      if(msgs.length>0) $('#pollStatus').textContent=`(${msgs.length}条)`;
-    }catch(e){}
-  },3000);
+  pollOnce(); // 立即执行第一次轮询
+  state.pollTimer = setInterval(pollOnce, 3000);
   $('#pollStatus').textContent='(轮询中...)';
 }
 
