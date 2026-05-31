@@ -347,7 +347,7 @@ async function sendOB(to,data){
   const res=await fetch(`${L0}/messages`,{method:'POST',headers:{'Authorization':`Bearer ${state.apiKey}`,'Content-Type':'application/json'},body});
   const r=await res.json(); if(r.code!==0) throw new Error(r.msg);
 }
-async function broadcastGame(data){ for(const pid of Object.keys(game.players)){ try{await sendOB(pid,data);}catch(e){} } }
+async function broadcastGame(data){ for(const pid of Object.keys(game.players)){ if(pid===state.openId) continue; try{await sendOB(pid,data);}catch(e){} } }
 async function sendDemo(){
   const peer=$('#peerInput').value.trim(),text=$('#msgInput').value.trim(); if(!peer||!text) return;
   try{ await sendOB(peer,{text,time:new Date().toISOString()}); demoLog(`📤 <b>${text.slice(0,100)}</b>`,'sent');$('#msgInput').value=''; }
@@ -432,7 +432,7 @@ function handleGameMessage(from,msg){
       break;
 
     case 'new_challenge':
-      if(!game.ended) gameLog(`🎯 <b>${msg.nickname}</b>: <b style="color:#f59e0b;">${msg.word}</b>`,'game');
+      if(!game.ended&&game.role==='player') gameLog(`🎯 <b>${msg.nickname}</b>: <b style="color:#f59e0b;">${msg.word}</b>`,'game');
       break;
 
     case 'association':
@@ -471,7 +471,6 @@ function showAssocInput(playerId, word, pname){
     const h=game.history.find(h=>h.word===word&&!h.association);
     if(h) h.association=text;
     try{
-      await sendOB(playerId,{action:'association',challenge_word:word,text});
       await broadcastGame({action:'association',challenge_word:word,text});
       gameLog(`🧠 已发送脑洞: <i>"${text}"</i>`,'game');
       btn.disabled=true;input.disabled=true;btn.textContent='已发送';btn.style.background='#22c55e';
