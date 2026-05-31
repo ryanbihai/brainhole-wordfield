@@ -178,14 +178,10 @@
 
     <!-- 挑战者：游戏进行中 -->
     <div class="card success hidden" id="playerGame">
-      <div class="card-title">🕵️ 挑战中</div>
+      <div class="card-title">🕵️ 挑战中 — 出词即猜词</div>
       <div class="players" id="gamePlayerList"></div>
-      <div style="margin-top:8px;">当前回合：<span id="currentTurn" style="color:#f59e0b;">等待中...</span></div>
-      <textarea id="challengeWord" placeholder="输入你的挑战词..." style="margin-top:6px;"></textarea>
-      <button onclick="submitChallenge()" id="btnChallenge" class="amber" style="margin-top:6px;">提交挑战词</button>
-      <div class="card-title" style="margin-top:10px;">🤔 猜一个</div>
-      <input type="text" id="guessWord" placeholder="猜猜目标词是什么？">
-      <button onclick="submitGuess()" id="btnGuess" class="green" style="margin-top:4px;">我猜！</button>
+      <textarea id="challengeWord" placeholder="输入挑战词（就是你的猜测）..." style="margin-top:6px;"></textarea>
+      <button onclick="submitChallenge()" id="btnChallenge" class="amber" style="margin-top:6px;">提交挑战词（猜！）</button>
     </div>
 
     <!-- 共享：游戏日志 -->
@@ -411,7 +407,6 @@ function handleGameMessage(from,msg){
         game.players[from]={nickname:msg.nickname||'匿名',joined:Date.now()};
         gameLog(`👤 <b>${msg.nickname}</b> 加入了房间`,'game');
         renderHostPlayers();
-        // 通知该挑战者加入成功
         sendOB(from,{action:'joined',players:Object.fromEntries(Object.entries(game.players).map(([k,v])=>[k,v.nickname]))});
         broadcastGame({action:'player_list',players:Object.fromEntries(Object.entries(game.players).map(([k,v])=>[k,v.nickname]))});
       }
@@ -436,24 +431,30 @@ function handleGameMessage(from,msg){
       }
       break;
 
-    // 主持人收到：挑战词
+    // 主持人收到：挑战词（挑战词=猜词！命中直接结束）
     case 'challenge_word':
       if(game.role==='host'&&!game.ended){
         const pname=game.players[from]?.nickname||from.slice(0,8);
-        game.history.push({player:from,nickname:pname,word:msg.word,round:msg.round||++game.round,association:null});
-        gameLog(`🎯 <b>${pname}</b> 的挑战词: <b style="color:#f59e0b;">${msg.word}</b>`,'game');
-        // 广播挑战词给所有挑战者
-        broadcastGame({action:'new_challenge',player:from,nickname:pname,word:msg.word,round:game.round});
-        // 提醒主持人给关联
-        gameLog(`↩️ 请在此输入你对「${msg.word}」的脑洞关联，发送给挑战者`,'sys');
-        // 创建关联输入区
-        showHostAssocInput(from, msg.word, pname);
+        const correct=msg.word===game.targetWord;
+        game.history.push({player:from,nickname:pname,word:msg.word,round:msg.round||++game.round,association:null,hit:correct});
+
+        if(correct){
+          // 🎉 命中！游戏结束
+          game.ended=true; game.winner=pname;
+          gameLog(`🎉 <b>${pname}</b> 的挑战词「${msg.word}」命中目标！`,'game');
+          broadcastGame({action:'game_over',winner:from,winner_name:pname,target_word:game.targetWord,history:game.history});
+        } else {
+          // 没命中：广播 + 等主持人给关联
+          gameLog(`🎯 <b>${pname}</b> → <b style="color:#f59e0b;">${msg.word}</b>`,'game');
+          broadcastGame({action:'new_challenge',player:from,nickname:pname,word:msg.word,round:game.round});
+          showHostAssocInput(from, msg.word, pname);
+        }
       }
       break;
 
-    // 挑战者收到：新的挑战词
+    // 所有人收到：新的挑战词
     case 'new_challenge':
-      if(game.role==='player'&&!game.ended){
+      if(!game.ended){
         gameLog(`🎯 <b>${msg.nickname}</b>: <b style="color:#f59e0b;">${msg.word}</b>`,'game');
       }
       break;
@@ -461,42 +462,10 @@ function handleGameMessage(from,msg){
     // 所有人收到：脑洞关联
     case 'association':
       if(!game.ended){
-        gameLog(`🧠 主持人对「<b>${msg.challenge_word}</b>」的脑洞: <i>"${msg.text}"</i>`,'game');
-        // 更新历史记录
+        gameLog(`🧠 主持人对「<b>${msg.challenge_word}</b>」: <i>"${msg.text}"</i>`,'game');
         const h=game.history.find(h=>h.word===msg.challenge_word&&!h.association);
         if(h) h.association=msg.text;
       }
-      break;
-
-    // 主持人收到：猜词
-    case 'guess':
-      if(game.role==='host'&&!game.ended){
-        const pname=game.players[from]?.nickname||from.slice(0,8);
-        const correct=msg.word===game.targetWord;
-        gameLog(correct?`🎉 <b>${pname}</b> 猜中了！目标词: <b style="color:#22c55e;">${msg.word}</b>`:`❌ <b>${pname}</b> 猜了「${msg.word}」—— 不对`,'game');
-        // 通知猜词者结果
-        sendOB(from,{action:'guess_result',correct,word:msg.word});
-        if(correct){
-          game.ended=true;
-          gameLog('🏆 游戏结束！请查看终局报告。','game');
-          broadcastGame({action:'game_over',winner:from,winner_name:pname,target_word:game.targetWord,history:game.history});
-        }else{
-          broadcastGame({action:'wrong_guess',player:from,nickname:pname,word:msg.word});
-        }
-      }
-      break;
-
-    // 挑战者收到：猜词结果
-    case 'guess_result':
-      if(game.role==='player'){
-        gameLog(msg.correct?`🎉 恭喜！你猜中了！`:`❌ 「${msg.word}」不对，继续加油...`,'game');
-        if(msg.correct){ game.ended=true; }
-      }
-      break;
-
-    // 所有人收到：猜错
-    case 'wrong_guess':
-      gameLog(`💭 <b>${msg.nickname}</b> 猜了「${msg.word}」—— 没中`,'sys');
       break;
 
     // 所有人收到：游戏结束
@@ -504,10 +473,10 @@ function handleGameMessage(from,msg){
       game.ended=true;
       game.targetWord=msg.target_word;
       game.history=msg.history||[];
-      gameLog(`🏆 <b>${msg.winner_name}</b> 猜中了目标词！`,'game');
-      gameLog(`🎯 目标词: <b style="color:#f59e0b;">${msg.target_word}</b>`,'game');
+      game.winner=msg.winner_name;
+      gameLog(`🏆 <b>${msg.winner_name}</b> 命中目标词「${msg.target_word}」！`,'game');
       gameLog(`📊 共 ${game.history.length} 个挑战词，等待终局评分...`,'sys');
-      if(game.role==='player'){ $('#btnChallenge').disabled=true;$('#btnGuess').disabled=true; }
+      if(game.role==='player'){ $('#btnChallenge').disabled=true; }
       showReport();
       break;
   }
@@ -548,17 +517,8 @@ async function submitChallenge(){
   const word=$('#challengeWord').value.trim(); if(!word) return;
   try{
     await sendOB(game.hostOpenId,{action:'challenge_word',word,round:game.round+1});
-    gameLog(`🎯 你出了挑战词: <b style="color:#f59e0b;">${word}</b>`,'game');
+    gameLog(`🎯 你出词: <b style="color:#f59e0b;">${word}</b> (兼作猜测)`,'game');
     $('#challengeWord').value='';
-  }catch(e){gameLog(`❌ 失败: ${e.message}`,'sys');}
-}
-async function submitGuess(){
-  if(!game.hostOpenId||game.ended) return;
-  const word=$('#guessWord').value.trim(); if(!word) return;
-  try{
-    await sendOB(game.hostOpenId,{action:'guess',word});
-    gameLog(`🤔 你猜: <b>${word}</b>`,'game');
-    $('#guessWord').value='';
   }catch(e){gameLog(`❌ 失败: ${e.message}`,'sys');}
 }
 
