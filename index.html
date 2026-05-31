@@ -308,9 +308,15 @@ function startPolling() {
       for (const msg of msgs) {
         state.lastSeq = Math.max(state.lastSeq, msg.seq_id);
         let content = msg.content;
-        try { content = JSON.parse(content); } catch {}
-        if (typeof content === 'object' && content.text) content = content.text;
-        log(`📩 <b>${msg.from_openid.slice(0,8)}...</b>: ${String(content).slice(0,200)}`, 'recv');
+        // 尝试各种解析：可能是 JSON 字符串，可能已经是对象
+        if (typeof content === 'string') {
+          try { const p = JSON.parse(content); if (typeof p === 'object') content = p; } catch {}
+        }
+        // 提取可读文本
+        if (typeof content === 'object' && content !== null) {
+          content = content.text || content.msg || content.message || JSON.stringify(content);
+        }
+        log(`📩 <b>${(msg.from_openid||'').slice(0,8)}...</b>: ${String(content).slice(0,200)}`, 'recv');
       }
       if (msgs.length > 0) $('#pollStatus').textContent = `(收到 ${msgs.length} 条)`;
     } catch (e) {
